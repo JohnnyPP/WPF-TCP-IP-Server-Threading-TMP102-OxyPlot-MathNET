@@ -21,7 +21,9 @@ namespace WPFTCPIPServer
     public class ViewModel
     {
         int x = 0;
-        bool DisableStartServerButton=false;
+        bool DisableStartServerButton = false;
+        bool DisableStopServerButton = true;
+        bool StopListeiningWhileLoop = false;
 
         public string Temperature { get; set; }
         public string ServerStatus { get; set; }
@@ -64,65 +66,74 @@ namespace WPFTCPIPServer
                 // Enter the listening loop. 
                 while (true)
                 {
-                    ServerStatus = "Waiting for a connection... ";
-
-                    // Perform a blocking call to accept requests. 
-                    // You could also user server.AcceptSocket() here.
-                    TcpClient client = server.AcceptTcpClient();
-                    ServerStatus = "Connected!";
-
-                    data = null;
-
-                    // Get a stream object for reading and writing
-                    NetworkStream stream = client.GetStream();
-
-                    int i;
-
-                    // Loop to receive all the data sent by the client. 
-                    while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                    if (StopListeiningWhileLoop == true)
                     {
-                        string TemperatureString;
-                        double TemperatureDouble;
-                        DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
-                        double dKurtosis = descrStat.Kurtosis;
-                        double dSkewness = descrStat.Skewness;
-
-                        // Translate data bytes to a ASCII string.
-                        data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
-                        TemperatureString = data;
-                        TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
-
-                        
-
-                        Data.Add(new CollectionDataValue { xData = x, yData = TemperatureDouble });
-                        TemperatureList.Add(TemperatureDouble);
-
-                        byte[] msg = System.Text.Encoding.ASCII.GetBytes(data);
-
-                        //Send back a response.
-                        stream.Write(msg, 0, msg.Length);
-                        
-                        ServerStatus = "Receiving temperature data and sending response to the Client.";
-
-                        #region TemperatureStatistics
-                        Temperature = "Current temperature: " + String.Format("{0:0.0000}", TemperatureDouble) + " [°C]" + Environment.NewLine +
-                        "Mean: " + String.Format("{0:0.0000}", TemperatureList.Mean()) + " [°C]" + Environment.NewLine +
-                        "Median: " + String.Format("{0:0.0000}", TemperatureList.Median()) + " [°C]" + Environment.NewLine +
-                        "Standard deviation: " + String.Format("{0:0.0000}", TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
-                        "3x Standard deviation: " + String.Format("{0:0.0000}", 3 * TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
-                        "Max: " + String.Format("{0:0.0000}", TemperatureList.Max()) + " [°C]" + Environment.NewLine +
-                        "Min: " + String.Format("{0:0.0000}", TemperatureList.Min()) + " [°C]" + Environment.NewLine +
-                        "Kurtosis: " + String.Format("{0:0.0000}", descrStat.Kurtosis) + "\r\n" +
-                        "Skewness: " + String.Format("{0:0.0000}", descrStat.Skewness) + "\r\n" +
-                        "Sample number: " + Convert.ToString(x);
-                        #endregion
-                        
-                        x++;  
+                        break;
                     }
+                    else
+                    {
+                        ServerStatus = "Waiting for a connection... ";
 
-                    // Shutdown and end connection
-                    client.Close();
+                        // Perform a blocking call to accept requests. 
+                        // You could also user server.AcceptSocket() here.
+                        TcpClient client = server.AcceptTcpClient();
+                        ServerStatus = "Connected!";
+
+                        data = null;
+
+                        // Get a stream object for reading and writing
+                        NetworkStream stream = client.GetStream();
+
+                        int i;
+
+                        // Loop to receive all the data sent by the client. 
+                        while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                        {
+                            string TemperatureString;
+                            double TemperatureDouble;
+                            DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
+                            double dKurtosis = descrStat.Kurtosis;
+                            double dSkewness = descrStat.Skewness;
+
+                            // Translate data bytes to a ASCII string.
+                            data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
+                            TemperatureString = data;
+                            TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
+
+
+
+                            Data.Add(new CollectionDataValue { xData = x, yData = TemperatureDouble });
+                            TemperatureList.Add(TemperatureDouble);
+
+                            byte[] msg = System.Text.Encoding.ASCII.GetBytes(data);
+
+                            //Send back a response.
+                            stream.Write(msg, 0, msg.Length);
+
+                            ServerStatus = "Receiving temperature data and sending response to the Client.";
+
+                            #region TemperatureStatistics
+                            Temperature = "Current temperature: " + String.Format("{0:0.0000}", TemperatureDouble) + " [°C]" + Environment.NewLine +
+                            "Mean: " + String.Format("{0:0.0000}", TemperatureList.Mean()) + " [°C]" + Environment.NewLine +
+                            "Median: " + String.Format("{0:0.0000}", TemperatureList.Median()) + " [°C]" + Environment.NewLine +
+                            "Standard deviation: " + String.Format("{0:0.0000}", TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
+                            "3x Standard deviation: " + String.Format("{0:0.0000}", 3 * TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
+                            "Max: " + String.Format("{0:0.0000}", TemperatureList.Max()) + " [°C]" + Environment.NewLine +
+                            "Min: " + String.Format("{0:0.0000}", TemperatureList.Min()) + " [°C]" + Environment.NewLine +
+                            "Kurtosis: " + String.Format("{0:0.0000}", descrStat.Kurtosis) + "\r\n" +
+                            "Skewness: " + String.Format("{0:0.0000}", descrStat.Skewness) + "\r\n" +
+                            "Sample number: " + Convert.ToString(x);
+                            #endregion
+
+                            x++;
+                        }
+
+                        // Shutdown and end connection
+                        client.Close();
+                    }
                 }
+                
+                ServerStatus = "You may now close the program";
             }
             catch (SocketException e)
             {
@@ -136,11 +147,16 @@ namespace WPFTCPIPServer
         }
 
         #region Commands
+
+        /// <summary>
+        /// Start Server button
+        /// </summary>
         void UpdateControlExecute()
         {
-            Thread newThread = new Thread(new ThreadStart(StartServer));
-            newThread.Start();
+            Thread ServerThread = new Thread(new ThreadStart(StartServer));
+            ServerThread.Start();
             DisableStartServerButton = true;
+            DisableStopServerButton = false;
         }
 
         bool CanUpdateControlExecute()
@@ -154,11 +170,41 @@ namespace WPFTCPIPServer
                 return false;
             }
         }
-
+        
         public ICommand StartServerButton
         {
             get { return new RelayCommand(UpdateControlExecute, CanUpdateControlExecute); }
+        }
+
+
+        /// <summary>
+        /// Stop Server button
+        /// </summary>
+        void UpdateStopServerButtonExecute()
+        {
+            Thread ServerThread = new Thread(new ThreadStart(StartServer));
+            ServerThread.Start();
+            DisableStartServerButton = true;
+            StopListeiningWhileLoop = true;
+        }
+
+        bool CanUpdateStopServerButtonExecute()
+        {
+            if (DisableStopServerButton == false)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public ICommand StopServerButton
+        {
+            get { return new RelayCommand(UpdateStopServerButtonExecute, CanUpdateStopServerButtonExecute); }
         } 
+        
         #endregion
     }
 }
