@@ -21,6 +21,7 @@ namespace WPFTCPIPServer
     public class ViewModel
     {
         int x = 0;
+        bool DisableStartServerButton=false;
 
         public string Temperature { get; set; }
         public string ServerStatus { get; set; }
@@ -39,12 +40,6 @@ namespace WPFTCPIPServer
         {
             ServerStatus = "Press Start server button to start the TCP/IP server";
             Data = new Collection<CollectionDataValue>();
-        }
-
-        void UpdateControlExecute()
-        {
-            Thread newThread = new Thread(new ThreadStart(StartServer));
-            newThread.Start();
         }
 
         private void StartServer()
@@ -140,14 +135,30 @@ namespace WPFTCPIPServer
             }
         }
 
+        #region Commands
+        void UpdateControlExecute()
+        {
+            Thread newThread = new Thread(new ThreadStart(StartServer));
+            newThread.Start();
+            DisableStartServerButton = true;
+        }
+
         bool CanUpdateControlExecute()
         {
-            return true;
+            if (DisableStartServerButton == false)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public ICommand StartServerButton
         {
             get { return new RelayCommand(UpdateControlExecute, CanUpdateControlExecute); }
-        }
+        } 
+        #endregion
     }
 }
