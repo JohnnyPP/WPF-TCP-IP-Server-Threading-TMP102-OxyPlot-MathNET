@@ -29,24 +29,26 @@ namespace WPFTCPIPServer
         public string Temperature { get; set; }
         public string ServerStatus { get; set; }
         public string ProducerExecutionTime { get; set; }
+        public string ConsumerExecutionTime { get; set; }
 
         private List<double> TemperatureList = new List<double>();
        
         
         private BlockingCollection<string> blockingCollection = new BlockingCollection<string>();
-        public Collection<CollectionDataValue> Data { get; set; }
+        public BlockingCollection<CollectionDataValue> Data { get; set; }
         public class CollectionDataValue
         {
             public double xData { get; set; }
             public double yData { get; set; }
         }
 
-        Stopwatch swatch = new Stopwatch();
+        Stopwatch ProducerWatch = new Stopwatch();
+        Stopwatch ConsumerWatch = new Stopwatch();
 
         public ViewModel()
         {
             ServerStatus = "Press Start server button to start the TCP/IP server";
-            Data = new Collection<CollectionDataValue>();
+            Data = new BlockingCollection<CollectionDataValue>();
         }
 
         public void ProducerServer()
@@ -94,7 +96,7 @@ namespace WPFTCPIPServer
                         // Loop to receive all the data sent by the client. 
                         while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
                         {
-                            swatch.Start();
+                            ProducerWatch.Start();
                             // Translate data bytes to a ASCII string.
                             data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
                             blockingCollection.Add(data);
@@ -104,10 +106,10 @@ namespace WPFTCPIPServer
                             //Send back a response.
                             stream.Write(msg, 0, msg.Length);
 
-                            swatch.Stop();
+                            ProducerWatch.Stop();
                             //Writing Execution Time in label
-                            ProducerExecutionTime = string.Format("Seconds: {0}\nMiliseconds: {1}", swatch.Elapsed.Seconds, swatch.Elapsed.TotalMilliseconds);
-                            swatch.Reset();
+                            ProducerExecutionTime = string.Format("Producer execution: {0} [ms]", ProducerWatch.Elapsed.TotalMilliseconds);
+                            ProducerWatch.Reset();
                         }
 
                         // Shutdown and end connection
@@ -133,11 +135,12 @@ namespace WPFTCPIPServer
             string TemperatureString;
             double TemperatureDouble;
             DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
+            double dKurtosis = descrStat.Kurtosis;
+            double dSkewness = descrStat.Skewness;
 
             while (true)
             {
-                double dKurtosis = descrStat.Kurtosis;
-                double dSkewness = descrStat.Skewness;
+                ConsumerWatch.Start();
                 TemperatureString = blockingCollection.Take();
                 TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
 
@@ -158,9 +161,10 @@ namespace WPFTCPIPServer
                 "Skewness: " + String.Format("{0:0.0000}", descrStat.Skewness) + "\r\n" +
                 "Sample number: " + Convert.ToString(x);
                 #endregion
-
                 x++;
-                
+                ConsumerWatch.Stop();
+                ConsumerExecutionTime = string.Format("Consumer execution: {0} [ms]", ConsumerWatch.Elapsed.TotalMilliseconds);
+                ConsumerWatch.Reset();
             }
         }
 
@@ -205,7 +209,6 @@ namespace WPFTCPIPServer
         {
             DisableStartServerButton = true;
             StopListeiningWhileLoop = true;
-            
         }
 
         bool CanUpdateStopServerButtonExecute()
