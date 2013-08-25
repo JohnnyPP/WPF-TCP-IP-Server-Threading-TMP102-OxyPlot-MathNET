@@ -9,10 +9,11 @@
         <local:ViewModel />
     </Window.DataContext>
     <Grid>
-        <TextBlock HorizontalAlignment="Left" Margin="10,91,0,0" TextWrapping="Wrap" Text="{Binding Temperature}" VerticalAlignment="Top" Width="201" Height="248"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,91,0,0" TextWrapping="Wrap" Text="{Binding Temperature}" VerticalAlignment="Top" Width="201" Height="201"/>
         <TextBlock HorizontalAlignment="Left" Margin="10,48,0,0" TextWrapping="Wrap" Text="{Binding ServerStatus}" VerticalAlignment="Top" Width="184" Height="46"/>
         <Button Content="Start server" Command="{Binding StartServerButton}" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="75"/>
         <Button Content="Stop server" Command="{Binding StopServerButton}" HorizontalAlignment="Left" Margin="119,10,0,0" VerticalAlignment="Top" Width="75"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,297,0,0" TextWrapping="Wrap" Text="{Binding ExecutionTime}" VerticalAlignment="Top" Width="184" Height="29"/>
         <oxy:Plot x:Name="plot1"
                   Title="TMP102 temperature sensor TCP/IP server"
                   Margin="199,10,10,10">

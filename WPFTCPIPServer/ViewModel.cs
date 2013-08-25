@@ -27,16 +27,18 @@ namespace WPFTCPIPServer
 
         public string Temperature { get; set; }
         public string ServerStatus { get; set; }
+        public string ExecutionTime { get; set; }
 
         private List<double> TemperatureList = new List<double>();
 
         public Collection<CollectionDataValue> Data { get; set; }
-
         public class CollectionDataValue
         {
             public double xData { get; set; }
             public double yData { get; set; }
         }
+
+        Stopwatch swatch = new Stopwatch();
 
         public ViewModel()
         {
@@ -72,6 +74,12 @@ namespace WPFTCPIPServer
                     }
                     else
                     {
+                        string TemperatureString;
+                        double TemperatureDouble;
+                        DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
+                        double dKurtosis = descrStat.Kurtosis;
+                        double dSkewness = descrStat.Skewness;
+
                         ServerStatus = "Waiting for a connection... ";
 
                         // Perform a blocking call to accept requests. 
@@ -89,18 +97,11 @@ namespace WPFTCPIPServer
                         // Loop to receive all the data sent by the client. 
                         while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
                         {
-                            string TemperatureString;
-                            double TemperatureDouble;
-                            DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
-                            double dKurtosis = descrStat.Kurtosis;
-                            double dSkewness = descrStat.Skewness;
-
+                            swatch.Start();
                             // Translate data bytes to a ASCII string.
                             data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
                             TemperatureString = data;
                             TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
-
-
 
                             Data.Add(new CollectionDataValue { xData = x, yData = TemperatureDouble });
                             TemperatureList.Add(TemperatureDouble);
@@ -126,6 +127,11 @@ namespace WPFTCPIPServer
                             #endregion
 
                             x++;
+                            swatch.Stop();
+                            //Writing Execution Time in label
+                            string ExecutionTimeTaken = string.Format("Seconds: {0}\nMiliseconds: {1}", swatch.Elapsed.Seconds, swatch.Elapsed.TotalMilliseconds);
+                            ExecutionTime = ExecutionTimeTaken;
+                            swatch.Reset();
                         }
 
                         // Shutdown and end connection

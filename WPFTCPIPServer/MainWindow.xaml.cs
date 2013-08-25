@@ -33,15 +33,15 @@ namespace WPFTCPIPServer
 
         private void CompositionTarget_Rendering(object sender, EventArgs e)
         {
-            if (stopwatch.ElapsedMilliseconds > lastUpdateMilliSeconds + 1000)
-            {
-                plot1.RefreshPlot(true);
-                lastUpdateMilliSeconds = stopwatch.ElapsedMilliseconds;
-                //Without this 1000 ms delay after some time the program throws exception: 
-                //"Collection was modified; enumeration operation may not execute"
-                //It is probably due to too fast plot1 refresh rate.
-                //In general this delay should be correlated with the client data sending rate.
-            }
+            //if (stopwatch.ElapsedMilliseconds > lastUpdateMilliSeconds + 1000)
+            //{
+            //    plot1.RefreshPlot(true);
+            //    lastUpdateMilliSeconds = stopwatch.ElapsedMilliseconds;
+            //    //Without this 1000 ms delay after some time the program throws exception: 
+            //    //"Collection was modified; enumeration operation may not execute"
+            //    //It is probably due to too fast plot1 refresh rate.
+            //    //In general this delay should be correlated with the client data sending rate.
+            //}
         }
     }
 }
