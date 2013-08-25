@@ -13,6 +13,7 @@ using WpfApplicationPropertyChanged;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using MathNet.Numerics.Statistics;
+using System.Collections.Concurrent;
 
 namespace WPFTCPIPServer
 {
@@ -27,10 +28,12 @@ namespace WPFTCPIPServer
 
         public string Temperature { get; set; }
         public string ServerStatus { get; set; }
-        public string ExecutionTime { get; set; }
+        public string ProducerExecutionTime { get; set; }
 
         private List<double> TemperatureList = new List<double>();
-
+       
+        
+        private BlockingCollection<string> blockingCollection = new BlockingCollection<string>();
         public Collection<CollectionDataValue> Data { get; set; }
         public class CollectionDataValue
         {
@@ -46,7 +49,7 @@ namespace WPFTCPIPServer
             Data = new Collection<CollectionDataValue>();
         }
 
-        private void StartServer()
+        public void ProducerServer()
         {
             TcpListener server = null;
             try
@@ -74,12 +77,6 @@ namespace WPFTCPIPServer
                     }
                     else
                     {
-                        string TemperatureString;
-                        double TemperatureDouble;
-                        DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
-                        double dKurtosis = descrStat.Kurtosis;
-                        double dSkewness = descrStat.Skewness;
-
                         ServerStatus = "Waiting for a connection... ";
 
                         // Perform a blocking call to accept requests. 
@@ -100,37 +97,16 @@ namespace WPFTCPIPServer
                             swatch.Start();
                             // Translate data bytes to a ASCII string.
                             data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
-                            TemperatureString = data;
-                            TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
-
-                            Data.Add(new CollectionDataValue { xData = x, yData = TemperatureDouble });
-                            TemperatureList.Add(TemperatureDouble);
-
+                            blockingCollection.Add(data);
+                            
                             byte[] msg = System.Text.Encoding.ASCII.GetBytes(data);
 
                             //Send back a response.
                             stream.Write(msg, 0, msg.Length);
 
-                            ServerStatus = "Receiving temperature data and sending response to the Client.";
-
-                            #region TemperatureStatistics
-                            Temperature = "Current temperature: " + String.Format("{0:0.0000}", TemperatureDouble) + " [°C]" + Environment.NewLine +
-                            "Mean: " + String.Format("{0:0.0000}", TemperatureList.Mean()) + " [°C]" + Environment.NewLine +
-                            "Median: " + String.Format("{0:0.0000}", TemperatureList.Median()) + " [°C]" + Environment.NewLine +
-                            "Standard deviation: " + String.Format("{0:0.0000}", TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
-                            "3x Standard deviation: " + String.Format("{0:0.0000}", 3 * TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
-                            "Max: " + String.Format("{0:0.0000}", TemperatureList.Max()) + " [°C]" + Environment.NewLine +
-                            "Min: " + String.Format("{0:0.0000}", TemperatureList.Min()) + " [°C]" + Environment.NewLine +
-                            "Kurtosis: " + String.Format("{0:0.0000}", descrStat.Kurtosis) + "\r\n" +
-                            "Skewness: " + String.Format("{0:0.0000}", descrStat.Skewness) + "\r\n" +
-                            "Sample number: " + Convert.ToString(x);
-                            #endregion
-
-                            x++;
                             swatch.Stop();
                             //Writing Execution Time in label
-                            string ExecutionTimeTaken = string.Format("Seconds: {0}\nMiliseconds: {1}", swatch.Elapsed.Seconds, swatch.Elapsed.TotalMilliseconds);
-                            ExecutionTime = ExecutionTimeTaken;
+                            ProducerExecutionTime = string.Format("Seconds: {0}\nMiliseconds: {1}", swatch.Elapsed.Seconds, swatch.Elapsed.TotalMilliseconds);
                             swatch.Reset();
                         }
 
@@ -152,6 +128,43 @@ namespace WPFTCPIPServer
             }
         }
 
+        public void Consumer()
+        {
+            string TemperatureString;
+            double TemperatureDouble;
+            DescriptiveStatistics descrStat = new DescriptiveStatistics(TemperatureList);
+
+            while (true)
+            {
+                double dKurtosis = descrStat.Kurtosis;
+                double dSkewness = descrStat.Skewness;
+                TemperatureString = blockingCollection.Take();
+                TemperatureDouble = double.Parse(TemperatureString, NumberStyles.Float, CultureInfo.InvariantCulture);
+
+                Data.Add(new CollectionDataValue { xData = x, yData = TemperatureDouble });
+                TemperatureList.Add(TemperatureDouble);
+
+                ServerStatus = "Receiving temperature data and sending response to the Client.";
+
+                #region TemperatureStatistics
+                Temperature = "Current temperature: " + String.Format("{0:0.0000}", TemperatureDouble) + " [°C]" + Environment.NewLine +
+                "Mean: " + String.Format("{0:0.0000}", TemperatureList.Mean()) + " [°C]" + Environment.NewLine +
+                "Median: " + String.Format("{0:0.0000}", TemperatureList.Median()) + " [°C]" + Environment.NewLine +
+                "Standard deviation: " + String.Format("{0:0.0000}", TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
+                "3x Standard deviation: " + String.Format("{0:0.0000}", 3 * TemperatureList.StandardDeviation()) + " [°C]" + Environment.NewLine +
+                "Max: " + String.Format("{0:0.0000}", TemperatureList.Max()) + " [°C]" + Environment.NewLine +
+                "Min: " + String.Format("{0:0.0000}", TemperatureList.Min()) + " [°C]" + Environment.NewLine +
+                "Kurtosis: " + String.Format("{0:0.0000}", descrStat.Kurtosis) + "\r\n" +
+                "Skewness: " + String.Format("{0:0.0000}", descrStat.Skewness) + "\r\n" +
+                "Sample number: " + Convert.ToString(x);
+                #endregion
+
+                x++;
+                
+            }
+        }
+
+
         #region Commands
 
         /// <summary>
@@ -159,8 +172,10 @@ namespace WPFTCPIPServer
         /// </summary>
         void UpdateControlExecute()
         {
-            Thread ServerThread = new Thread(new ThreadStart(StartServer));
-            ServerThread.Start();
+            Thread ProducerThread = new Thread(new ThreadStart(ProducerServer));
+            Thread ConsumerThread = new Thread(new ThreadStart(Consumer));
+            ProducerThread.Start();
+            ConsumerThread.Start();
             DisableStartServerButton = true;
             DisableStopServerButton = false;
         }
@@ -188,10 +203,9 @@ namespace WPFTCPIPServer
         /// </summary>
         void UpdateStopServerButtonExecute()
         {
-            Thread ServerThread = new Thread(new ThreadStart(StartServer));
-            ServerThread.Start();
             DisableStartServerButton = true;
             StopListeiningWhileLoop = true;
+            
         }
 
         bool CanUpdateStopServerButtonExecute()
